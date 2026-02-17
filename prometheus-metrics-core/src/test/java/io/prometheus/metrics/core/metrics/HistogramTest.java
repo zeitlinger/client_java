@@ -828,7 +828,7 @@ class HistogramTest {
     for (int i = 0; i < indexes.length; i++) {
       Histogram histogram =
           Histogram.builder().name("test").nativeInitialSchema(schemas[i]).build();
-      Histogram.DataPoint histogramData = histogram.newDataPoint();
+      Histogram.DataPoint histogramData = histogram.newDataPoint(new String[0]);
       double result = (double) method.invoke(histogramData, schemas[i], indexes[i]);
       assertThat(result)
           .as("index=" + indexes[i] + ", schema=" + schemas[i])

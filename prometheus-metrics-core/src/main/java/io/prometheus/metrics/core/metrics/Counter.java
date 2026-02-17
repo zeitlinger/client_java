@@ -99,7 +99,16 @@ public class Counter extends StatefulMetric<CounterDataPoint, Counter.DataPoint>
   }
 
   @Override
-  protected DataPoint newDataPoint() {
+  protected DataPoint newDataPoint(String[] labelValues) {
+    MetricBackend backend = MetricBackend.getInstance();
+    if (backend != null) {
+      CounterDataPoint delegating =
+          backend.createCounterDataPoint(getMetadata(), labelNames, labelValues);
+      // Wrap in a DataPoint so that collect() still works via DataPoint.collect(Labels).
+      return new DataPoint(
+          exemplarSamplerConfig != null ? new ExemplarSampler(exemplarSamplerConfig) : null,
+          delegating);
+    }
     if (exemplarSamplerConfig != null) {
       return new DataPoint(new ExemplarSampler(exemplarSamplerConfig));
     } else {
@@ -126,8 +135,16 @@ public class Counter extends StatefulMetric<CounterDataPoint, Counter.DataPoint>
     @Nullable
     private final ExemplarSampler exemplarSampler; // null if exemplarSamplerConfig is null
 
+    @Nullable private final CounterDataPoint delegate; // non-null when a MetricBackend is active
+
     private DataPoint(@Nullable ExemplarSampler exemplarSampler) {
+      this(exemplarSampler, null);
+    }
+
+    private DataPoint(
+        @Nullable ExemplarSampler exemplarSampler, @Nullable CounterDataPoint delegate) {
       this.exemplarSampler = exemplarSampler;
+      this.delegate = delegate;
     }
 
     @Override
@@ -143,6 +160,9 @@ public class Counter extends StatefulMetric<CounterDataPoint, Counter.DataPoint>
     @Override
     public void inc(long amount) {
       validateAndAdd(amount);
+      if (delegate != null) {
+        delegate.inc(amount);
+      }
       if (exemplarSampler != null) {
         exemplarSampler.observe((double) amount);
       }
@@ -151,6 +171,9 @@ public class Counter extends StatefulMetric<CounterDataPoint, Counter.DataPoint>
     @Override
     public void inc(double amount) {
       validateAndAdd(amount);
+      if (delegate != null) {
+        delegate.inc(amount);
+      }
       if (exemplarSampler != null) {
         exemplarSampler.observe(amount);
       }
@@ -159,6 +182,9 @@ public class Counter extends StatefulMetric<CounterDataPoint, Counter.DataPoint>
     @Override
     public void incWithExemplar(long amount, Labels labels) {
       validateAndAdd(amount);
+      if (delegate != null) {
+        delegate.incWithExemplar(amount, labels);
+      }
       if (exemplarSampler != null) {
         exemplarSampler.observeWithExemplar((double) amount, labels);
       }
@@ -167,6 +193,9 @@ public class Counter extends StatefulMetric<CounterDataPoint, Counter.DataPoint>
     @Override
     public void incWithExemplar(double amount, Labels labels) {
       validateAndAdd(amount);
+      if (delegate != null) {
+        delegate.incWithExemplar(amount, labels);
+      }
       if (exemplarSampler != null) {
         exemplarSampler.observeWithExemplar(amount, labels);
       }

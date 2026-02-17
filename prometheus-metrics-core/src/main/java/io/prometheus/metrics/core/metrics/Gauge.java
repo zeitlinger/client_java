@@ -101,7 +101,7 @@ public class Gauge extends StatefulMetric<GaugeDataPoint, Gauge.DataPoint>
   }
 
   @Override
-  protected DataPoint newDataPoint() {
+  protected DataPoint newDataPoint(String[] labelValues) {
     if (exemplarSamplerConfig != null) {
       return new DataPoint(new ExemplarSampler(exemplarSamplerConfig));
     } else {

@@ -125,7 +125,7 @@ public class Summary extends StatefulMetric<DistributionDataPoint, Summary.DataP
   }
 
   @Override
-  protected DataPoint newDataPoint() {
+  protected DataPoint newDataPoint(String[] labelValues) {
     return new DataPoint();
   }
 

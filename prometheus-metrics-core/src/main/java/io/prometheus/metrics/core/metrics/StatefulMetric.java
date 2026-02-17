@@ -125,7 +125,7 @@ public abstract class StatefulMetric<D extends DataPoint, T extends D>
                       + labelNames[i]);
             }
           }
-          return newDataPoint();
+          return newDataPoint(l.toArray(new String[0]));
         });
   }
 
@@ -148,7 +148,7 @@ public abstract class StatefulMetric<D extends DataPoint, T extends D>
     noLabels = null;
   }
 
-  protected abstract T newDataPoint();
+  protected abstract T newDataPoint(String[] labelValues);
 
   @SuppressWarnings("unchecked")
   protected T getNoLabels() {

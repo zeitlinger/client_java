@@ -101,7 +101,7 @@ public class StateSet extends StatefulMetric<StateSetDataPoint, StateSet.DataPoi
   }
 
   @Override
-  protected DataPoint newDataPoint() {
+  protected DataPoint newDataPoint(String[] labelValues) {
     return new DataPoint();
   }
 

@@ -656,7 +656,7 @@ public class Histogram extends StatefulMetric<DistributionDataPoint, Histogram.D
   }
 
   @Override
-  protected DataPoint newDataPoint() {
+  protected DataPoint newDataPoint(String[] labelValues) {
     return new DataPoint();
   }
 
