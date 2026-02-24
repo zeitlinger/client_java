@@ -1,6 +1,7 @@
 package io.prometheus.metrics.core.metrics;
 
 import io.prometheus.metrics.core.datapoints.CounterDataPoint;
+import io.prometheus.metrics.core.datapoints.GaugeDataPoint;
 import io.prometheus.metrics.model.snapshots.MetricMetadata;
 import java.util.Iterator;
 import java.util.ServiceLoader;
@@ -12,8 +13,6 @@ import javax.annotation.Nullable;
  * <p>When a {@code MetricBackend} implementation is on the classpath and registered via {@link
  * ServiceLoader}, metric data points will delegate to it instead of using native storage. This
  * enables the Prometheus client API to record directly into an OpenTelemetry SDK pipeline.
- *
- * <p>Counter-only for now (PoC scope).
  */
 public interface MetricBackend {
 
@@ -26,6 +25,17 @@ public interface MetricBackend {
    * @return a {@link CounterDataPoint} that delegates to the backend
    */
   CounterDataPoint createCounterDataPoint(
+      MetricMetadata metadata, String[] labelNames, String[] labelValues);
+
+  /**
+   * Create a {@link GaugeDataPoint} backed by this backend.
+   *
+   * @param metadata the metric name, help, and unit
+   * @param labelNames the label names declared on the metric
+   * @param labelValues the label values for this specific data point
+   * @return a {@link GaugeDataPoint} that delegates to the backend
+   */
+  GaugeDataPoint createGaugeDataPoint(
       MetricMetadata metadata, String[] labelNames, String[] labelValues);
 
   /**

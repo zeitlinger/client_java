@@ -102,6 +102,14 @@ public class Gauge extends StatefulMetric<GaugeDataPoint, Gauge.DataPoint>
 
   @Override
   protected DataPoint newDataPoint(String[] labelValues) {
+    MetricBackend backend = MetricBackend.getInstance();
+    if (backend != null) {
+      GaugeDataPoint delegating =
+          backend.createGaugeDataPoint(getMetadata(), labelNames, labelValues);
+      return new DataPoint(
+          exemplarSamplerConfig != null ? new ExemplarSampler(exemplarSamplerConfig) : null,
+          delegating);
+    }
     if (exemplarSamplerConfig != null) {
       return new DataPoint(new ExemplarSampler(exemplarSamplerConfig));
     } else {
@@ -114,8 +122,16 @@ public class Gauge extends StatefulMetric<GaugeDataPoint, Gauge.DataPoint>
     @Nullable
     private final ExemplarSampler exemplarSampler; // null if exemplarSamplerConfig is null
 
+    @Nullable private final GaugeDataPoint delegate; // non-null when a MetricBackend is active
+
     private DataPoint(@Nullable ExemplarSampler exemplarSampler) {
+      this(exemplarSampler, null);
+    }
+
+    private DataPoint(
+        @Nullable ExemplarSampler exemplarSampler, @Nullable GaugeDataPoint delegate) {
       this.exemplarSampler = exemplarSampler;
+      this.delegate = delegate;
     }
 
     private final AtomicLong value = new AtomicLong(Double.doubleToRawLongBits(0));
@@ -124,6 +140,9 @@ public class Gauge extends StatefulMetric<GaugeDataPoint, Gauge.DataPoint>
     public void inc(double amount) {
       long next =
           value.updateAndGet(l -> Double.doubleToRawLongBits(Double.longBitsToDouble(l) + amount));
+      if (delegate != null) {
+        delegate.inc(amount);
+      }
       if (exemplarSampler != null) {
         exemplarSampler.observe(Double.longBitsToDouble(next));
       }
@@ -133,6 +152,9 @@ public class Gauge extends StatefulMetric<GaugeDataPoint, Gauge.DataPoint>
     public void incWithExemplar(double amount, Labels labels) {
       long next =
           value.updateAndGet(l -> Double.doubleToRawLongBits(Double.longBitsToDouble(l) + amount));
+      if (delegate != null) {
+        delegate.incWithExemplar(amount, labels);
+      }
       if (exemplarSampler != null) {
         exemplarSampler.observeWithExemplar(Double.longBitsToDouble(next), labels);
       }
@@ -141,6 +163,9 @@ public class Gauge extends StatefulMetric<GaugeDataPoint, Gauge.DataPoint>
     @Override
     public void set(double value) {
       this.value.set(Double.doubleToRawLongBits(value));
+      if (delegate != null) {
+        delegate.set(value);
+      }
       if (exemplarSampler != null) {
         exemplarSampler.observe(value);
       }
@@ -154,6 +179,9 @@ public class Gauge extends StatefulMetric<GaugeDataPoint, Gauge.DataPoint>
     @Override
     public void setWithExemplar(double value, Labels labels) {
       this.value.set(Double.doubleToRawLongBits(value));
+      if (delegate != null) {
+        delegate.setWithExemplar(value, labels);
+      }
       if (exemplarSampler != null) {
         exemplarSampler.observeWithExemplar(value, labels);
       }
