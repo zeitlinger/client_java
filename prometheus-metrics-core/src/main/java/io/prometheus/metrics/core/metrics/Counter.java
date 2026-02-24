@@ -104,10 +104,12 @@ public class Counter extends StatefulMetric<CounterDataPoint, Counter.DataPoint>
     if (backend != null) {
       CounterDataPoint delegating =
           backend.createCounterDataPoint(getMetadata(), labelNames, labelValues);
+      boolean dualWrite = backend.isDualWriteEnabled();
       // Wrap in a DataPoint so that collect() still works via DataPoint.collect(Labels).
       return new DataPoint(
           exemplarSamplerConfig != null ? new ExemplarSampler(exemplarSamplerConfig) : null,
-          delegating);
+          delegating,
+          dualWrite);
     }
     if (exemplarSamplerConfig != null) {
       return new DataPoint(new ExemplarSampler(exemplarSamplerConfig));
@@ -136,15 +138,19 @@ public class Counter extends StatefulMetric<CounterDataPoint, Counter.DataPoint>
     private final ExemplarSampler exemplarSampler; // null if exemplarSamplerConfig is null
 
     @Nullable private final CounterDataPoint delegate; // non-null when a MetricBackend is active
+    private final boolean dualWrite;
 
     private DataPoint(@Nullable ExemplarSampler exemplarSampler) {
-      this(exemplarSampler, null);
+      this(exemplarSampler, null, true);
     }
 
     private DataPoint(
-        @Nullable ExemplarSampler exemplarSampler, @Nullable CounterDataPoint delegate) {
+        @Nullable ExemplarSampler exemplarSampler,
+        @Nullable CounterDataPoint delegate,
+        boolean dualWrite) {
       this.exemplarSampler = exemplarSampler;
       this.delegate = delegate;
+      this.dualWrite = dualWrite;
     }
 
     @Override
@@ -159,44 +165,52 @@ public class Counter extends StatefulMetric<CounterDataPoint, Counter.DataPoint>
 
     @Override
     public void inc(long amount) {
-      validateAndAdd(amount);
+      if (dualWrite) {
+        validateAndAdd(amount);
+      }
       if (delegate != null) {
         delegate.inc(amount);
       }
-      if (exemplarSampler != null) {
+      if (dualWrite && exemplarSampler != null) {
         exemplarSampler.observe((double) amount);
       }
     }
 
     @Override
     public void inc(double amount) {
-      validateAndAdd(amount);
+      if (dualWrite) {
+        validateAndAdd(amount);
+      }
       if (delegate != null) {
         delegate.inc(amount);
       }
-      if (exemplarSampler != null) {
+      if (dualWrite && exemplarSampler != null) {
         exemplarSampler.observe(amount);
       }
     }
 
     @Override
     public void incWithExemplar(long amount, Labels labels) {
-      validateAndAdd(amount);
+      if (dualWrite) {
+        validateAndAdd(amount);
+      }
       if (delegate != null) {
         delegate.incWithExemplar(amount, labels);
       }
-      if (exemplarSampler != null) {
+      if (dualWrite && exemplarSampler != null) {
         exemplarSampler.observeWithExemplar((double) amount, labels);
       }
     }
 
     @Override
     public void incWithExemplar(double amount, Labels labels) {
-      validateAndAdd(amount);
+      if (dualWrite) {
+        validateAndAdd(amount);
+      }
       if (delegate != null) {
         delegate.incWithExemplar(amount, labels);
       }
-      if (exemplarSampler != null) {
+      if (dualWrite && exemplarSampler != null) {
         exemplarSampler.observeWithExemplar(amount, labels);
       }
     }

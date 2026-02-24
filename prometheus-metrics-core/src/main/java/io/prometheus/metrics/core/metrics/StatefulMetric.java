@@ -12,7 +12,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
+import java.util.logging.Logger;
 import javax.annotation.Nullable;
 
 /**
@@ -32,6 +34,9 @@ import javax.annotation.Nullable;
  */
 public abstract class StatefulMetric<D extends DataPoint, T extends D>
     extends MetricWithFixedMetadata {
+
+  private static final Logger logger = Logger.getLogger(StatefulMetric.class.getName());
+  private static final AtomicBoolean clearRemoveWarningLogged = new AtomicBoolean(false);
 
   /** Map label values to data points. */
   private final ConcurrentHashMap<List<String>, T> data = new ConcurrentHashMap<>();
@@ -134,18 +139,33 @@ public abstract class StatefulMetric<D extends DataPoint, T extends D>
    * href="https://prometheus.io/docs/instrumenting/writing_clientlibs/#labels">https://prometheus.io/docs/instrumenting/writing_clientlibs/#labels</a>.
    */
   public void remove(String... labelValues) {
+    warnIfBackendActive("remove");
     data.remove(Arrays.asList(labelValues));
   }
 
   /** Remove the data points when the given function. */
   public void removeIf(Function<List<String>, Boolean> f) {
+    warnIfBackendActive("removeIf");
     data.entrySet().removeIf(entry -> f.apply(Collections.unmodifiableList(entry.getKey())));
   }
 
   /** Reset the metric (remove all data points). */
   public void clear() {
+    warnIfBackendActive("clear");
     data.clear();
     noLabels = null;
+  }
+
+  private void warnIfBackendActive(String method) {
+    if (MetricBackend.getInstance() != null
+        && clearRemoveWarningLogged.compareAndSet(false, true)) {
+      logger.warning(
+          method
+              + "() called on "
+              + getMetadata().getName()
+              + " but a MetricBackend is active. OTel instruments are cumulative and cannot be"
+              + " reset — the backend side is unaffected by this call.");
+    }
   }
 
   protected abstract T newDataPoint(String[] labelValues);

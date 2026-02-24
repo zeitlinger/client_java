@@ -211,12 +211,15 @@ public class Histogram extends StatefulMetric<DistributionDataPoint, Histogram.D
     @Nullable
     private final DistributionDataPoint delegate; // non-null when a MetricBackend is active
 
+    private final boolean dualWrite;
+
     private DataPoint() {
-      this(null);
+      this(null, true);
     }
 
-    private DataPoint(@Nullable DistributionDataPoint delegate) {
+    private DataPoint(@Nullable DistributionDataPoint delegate, boolean dualWrite) {
       this.delegate = delegate;
+      this.dualWrite = dualWrite;
       if (exemplarSamplerConfig != null) {
         exemplarSampler = new ExemplarSampler(exemplarSamplerConfig);
       } else {
@@ -248,11 +251,13 @@ public class Histogram extends StatefulMetric<DistributionDataPoint, Histogram.D
       if (delegate != null) {
         delegate.observe(value);
       }
-      if (!buffer.append(value)) {
-        doObserve(value, false);
-      }
-      if (exemplarSampler != null) {
-        exemplarSampler.observe(value);
+      if (dualWrite) {
+        if (!buffer.append(value)) {
+          doObserve(value, false);
+        }
+        if (exemplarSampler != null) {
+          exemplarSampler.observe(value);
+        }
       }
     }
 
@@ -265,11 +270,13 @@ public class Histogram extends StatefulMetric<DistributionDataPoint, Histogram.D
       if (delegate != null) {
         delegate.observeWithExemplar(value, labels);
       }
-      if (!buffer.append(value)) {
-        doObserve(value, false);
-      }
-      if (exemplarSampler != null) {
-        exemplarSampler.observeWithExemplar(value, labels);
+      if (dualWrite) {
+        if (!buffer.append(value)) {
+          doObserve(value, false);
+        }
+        if (exemplarSampler != null) {
+          exemplarSampler.observeWithExemplar(value, labels);
+        }
       }
     }
 
@@ -676,7 +683,7 @@ public class Histogram extends StatefulMetric<DistributionDataPoint, Histogram.D
       DistributionDataPoint delegating =
           backend.createHistogramDataPoint(
               getMetadata(), labelNames, labelValues, classicUpperBounds);
-      return new DataPoint(delegating);
+      return new DataPoint(delegating, backend.isDualWriteEnabled());
     }
     return new DataPoint();
   }

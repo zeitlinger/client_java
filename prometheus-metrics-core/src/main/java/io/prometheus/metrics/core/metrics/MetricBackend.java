@@ -56,6 +56,18 @@ public interface MetricBackend {
       double[] classicUpperBounds);
 
   /**
+   * Whether the native Prometheus storage should be written in addition to the backend.
+   *
+   * <p>When {@code true} (the default), every metric operation writes to both the native Prometheus
+   * adders and the backend. This keeps the {@code /metrics} scrape endpoint working. When {@code
+   * false}, only the backend receives writes, which improves performance but means {@code
+   * collect()} and {@code get()} on the Prometheus side return zero.
+   */
+  default boolean isDualWriteEnabled() {
+    return true;
+  }
+
+  /**
    * Returns the {@link MetricBackend} discovered via {@link ServiceLoader}, or {@code null} if none
    * is on the classpath.
    */
