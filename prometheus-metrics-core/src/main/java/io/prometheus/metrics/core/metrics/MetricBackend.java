@@ -1,6 +1,7 @@
 package io.prometheus.metrics.core.metrics;
 
 import io.prometheus.metrics.core.datapoints.CounterDataPoint;
+import io.prometheus.metrics.core.datapoints.DistributionDataPoint;
 import io.prometheus.metrics.core.datapoints.GaugeDataPoint;
 import io.prometheus.metrics.model.snapshots.MetricMetadata;
 import java.util.Iterator;
@@ -37,6 +38,22 @@ public interface MetricBackend {
    */
   GaugeDataPoint createGaugeDataPoint(
       MetricMetadata metadata, String[] labelNames, String[] labelValues);
+
+  /**
+   * Create a {@link DistributionDataPoint} backed by this backend for histogram metrics.
+   *
+   * @param metadata the metric name, help, and unit
+   * @param labelNames the label names declared on the metric
+   * @param labelValues the label values for this specific data point
+   * @param classicUpperBounds the classic histogram bucket upper bounds (may be empty for
+   *     native-only histograms)
+   * @return a {@link DistributionDataPoint} that delegates to the backend
+   */
+  DistributionDataPoint createHistogramDataPoint(
+      MetricMetadata metadata,
+      String[] labelNames,
+      String[] labelValues,
+      double[] classicUpperBounds);
 
   /**
    * Returns the {@link MetricBackend} discovered via {@link ServiceLoader}, or {@code null} if none

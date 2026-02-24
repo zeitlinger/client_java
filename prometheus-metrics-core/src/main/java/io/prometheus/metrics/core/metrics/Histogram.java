@@ -208,7 +208,15 @@ public class Histogram extends StatefulMetric<DistributionDataPoint, Histogram.D
     private volatile boolean resetDurationExpired = false;
     @Nullable private final ExemplarSampler exemplarSampler;
 
+    @Nullable
+    private final DistributionDataPoint delegate; // non-null when a MetricBackend is active
+
     private DataPoint() {
+      this(null);
+    }
+
+    private DataPoint(@Nullable DistributionDataPoint delegate) {
+      this.delegate = delegate;
       if (exemplarSamplerConfig != null) {
         exemplarSampler = new ExemplarSampler(exemplarSamplerConfig);
       } else {
@@ -237,6 +245,9 @@ public class Histogram extends StatefulMetric<DistributionDataPoint, Histogram.D
         // See https://github.com/prometheus/client_golang/issues/1275 on ignoring NaN observations.
         return;
       }
+      if (delegate != null) {
+        delegate.observe(value);
+      }
       if (!buffer.append(value)) {
         doObserve(value, false);
       }
@@ -250,6 +261,9 @@ public class Histogram extends StatefulMetric<DistributionDataPoint, Histogram.D
       if (Double.isNaN(value)) {
         // See https://github.com/prometheus/client_golang/issues/1275 on ignoring NaN observations.
         return;
+      }
+      if (delegate != null) {
+        delegate.observeWithExemplar(value, labels);
       }
       if (!buffer.append(value)) {
         doObserve(value, false);
@@ -657,6 +671,13 @@ public class Histogram extends StatefulMetric<DistributionDataPoint, Histogram.D
 
   @Override
   protected DataPoint newDataPoint(String[] labelValues) {
+    MetricBackend backend = MetricBackend.getInstance();
+    if (backend != null) {
+      DistributionDataPoint delegating =
+          backend.createHistogramDataPoint(
+              getMetadata(), labelNames, labelValues, classicUpperBounds);
+      return new DataPoint(delegating);
+    }
     return new DataPoint();
   }
 
