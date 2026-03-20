@@ -207,7 +207,7 @@ class OpenMetrics2TextFormatWriterTest {
   }
 
   @Test
-  void testOutputIdenticalToOM1ForInfo() throws IOException {
+  void testInfoTypeAndHelpUseFullName() throws IOException {
     MetricSnapshots snapshots =
         MetricSnapshots.of(
             InfoSnapshot.builder()
@@ -219,10 +219,36 @@ class OpenMetrics2TextFormatWriterTest {
                         .build())
                 .build());
 
-    String om1Output = writeWithOM1(snapshots);
     String om2Output = writeWithOM2(snapshots);
 
-    assertThat(om2Output).isEqualTo(om1Output);
+    // OM2: TYPE/HELP use the full name including _info (metric name == MetricFamily name)
+    assertThat(om2Output)
+        .isEqualTo(
+            "# TYPE my_info info\n"
+                + "# HELP my_info Test info\n"
+                + "my_info{platform=\"linux\",version=\"1.0\"} 1\n"
+                + "# EOF\n");
+  }
+
+  @Test
+  void testInfoMetricEnforcesInfoSuffix() throws IOException {
+    MetricSnapshots snapshots =
+        MetricSnapshots.of(
+            InfoSnapshot.builder()
+                .name("jvm")
+                .help("JVM info")
+                .dataPoint(InfoSnapshot.InfoDataPointSnapshot.builder().build())
+                .build());
+
+    String om2Output = writeWithOM2(snapshots);
+
+    // OM2: _info suffix enforced, TYPE/HELP/data lines all use jvm_info
+    assertThat(om2Output)
+        .isEqualTo(
+            "# TYPE jvm_info info\n"
+                + "# HELP jvm_info JVM info\n"
+                + "jvm_info 1\n"
+                + "# EOF\n");
   }
 
   @Test
