@@ -574,7 +574,14 @@ class OpenMetrics2TextFormatWriterTest {
                         .build())
                 .build());
 
-    assertThat(write(snapshots, complianceWriter)).doesNotContain("# {");
+    assertThat(write(snapshots, complianceWriter))
+        .isEqualTo(
+            "# TYPE requests histogram\n"
+                + "requests_bucket{le=\"1.0\"} 1\n"
+                + "requests_bucket{le=\"+Inf\"} 2\n"
+                + "requests_count 2\n"
+                + "requests_sum 2.0\n"
+                + "# EOF\n");
   }
 
   @Test
@@ -598,7 +605,12 @@ class OpenMetrics2TextFormatWriterTest {
                         .build())
                 .build());
 
-    assertThat(write(snapshots, complianceWriter)).doesNotContain("# {");
+    assertThat(write(snapshots, complianceWriter))
+        .isEqualTo(
+            "# TYPE requests summary\n"
+                + "requests_count 1\n"
+                + "requests_sum 2.0\n"
+                + "# EOF\n");
   }
 
   private String writeWithCompositeValues(MetricSnapshots snapshots) throws IOException {

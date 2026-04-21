@@ -15,6 +15,7 @@ import io.prometheus.metrics.model.snapshots.ClassicHistogramBuckets;
 import io.prometheus.metrics.model.snapshots.CounterSnapshot;
 import io.prometheus.metrics.model.snapshots.DataPointSnapshot;
 import io.prometheus.metrics.model.snapshots.Exemplar;
+import io.prometheus.metrics.model.snapshots.Exemplars;
 import io.prometheus.metrics.model.snapshots.GaugeSnapshot;
 import io.prometheus.metrics.model.snapshots.HistogramSnapshot;
 import io.prometheus.metrics.model.snapshots.InfoSnapshot;
@@ -34,6 +35,8 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import javax.annotation.Nullable;
 
 /**
@@ -200,9 +203,8 @@ public class OpenMetrics2TextFormatWriter implements ExpositionFormatWriter {
 
   private void writeHistogram(Writer writer, HistogramSnapshot snapshot, EscapingScheme scheme)
       throws IOException {
-    if (!openMetrics2Properties.getCompositeValues()
-        && !openMetrics2Properties.getExemplarCompliance()) {
-      om1Writer.writeHistogram(writer, snapshot, scheme);
+    if (!openMetrics2Properties.getCompositeValues()) {
+      om1Writer.writeHistogram(writer, sanitizeHistogramSnapshot(snapshot), scheme);
       return;
     }
     MetricMetadata metadata = snapshot.getMetadata();
@@ -274,9 +276,8 @@ public class OpenMetrics2TextFormatWriter implements ExpositionFormatWriter {
 
   private void writeSummary(Writer writer, SummarySnapshot snapshot, EscapingScheme scheme)
       throws IOException {
-    if (!openMetrics2Properties.getCompositeValues()
-        && !openMetrics2Properties.getExemplarCompliance()) {
-      om1Writer.writeSummary(writer, snapshot, scheme);
+    if (!openMetrics2Properties.getCompositeValues()) {
+      om1Writer.writeSummary(writer, sanitizeSummarySnapshot(snapshot), scheme);
       return;
     }
     boolean metadataWritten = false;
@@ -423,6 +424,83 @@ public class OpenMetrics2TextFormatWriter implements ExpositionFormatWriter {
       }
       writer.write('\n');
     }
+  }
+
+  private HistogramSnapshot sanitizeHistogramSnapshot(HistogramSnapshot snapshot) {
+    if (!openMetrics2Properties.getExemplarCompliance()) {
+      return snapshot;
+    }
+    List<HistogramSnapshot.HistogramDataPointSnapshot> sanitized = new ArrayList<>();
+    for (HistogramSnapshot.HistogramDataPointSnapshot data : snapshot.getDataPoints()) {
+      sanitized.add(sanitizeHistogramDataPoint(data));
+    }
+    return new HistogramSnapshot(snapshot.isGaugeHistogram(), snapshot.getMetadata(), sanitized);
+  }
+
+  private HistogramSnapshot.HistogramDataPointSnapshot sanitizeHistogramDataPoint(
+      HistogramSnapshot.HistogramDataPointSnapshot data) {
+    HistogramSnapshot.HistogramDataPointSnapshot.Builder builder =
+        HistogramSnapshot.HistogramDataPointSnapshot.builder()
+            .classicHistogramBuckets(data.getClassicBuckets())
+            .nativeSchema(data.getNativeSchema())
+            .nativeZeroCount(data.getNativeZeroCount())
+            .nativeZeroThreshold(data.getNativeZeroThreshold())
+            .nativeBucketsForPositiveValues(data.getNativeBucketsForPositiveValues())
+            .nativeBucketsForNegativeValues(data.getNativeBucketsForNegativeValues())
+            .sum(data.getSum())
+            .labels(data.getLabels())
+            .exemplars(sanitizeExemplars(data.getExemplars()));
+    if (data.hasCreatedTimestamp()) {
+      builder.createdTimestampMillis(data.getCreatedTimestampMillis());
+    }
+    if (data.hasScrapeTimestamp()) {
+      builder.scrapeTimestampMillis(data.getScrapeTimestampMillis());
+    }
+    return builder.build();
+  }
+
+  private SummarySnapshot sanitizeSummarySnapshot(SummarySnapshot snapshot) {
+    if (!openMetrics2Properties.getExemplarCompliance()) {
+      return snapshot;
+    }
+    List<SummarySnapshot.SummaryDataPointSnapshot> sanitized = new ArrayList<>();
+    for (SummarySnapshot.SummaryDataPointSnapshot data : snapshot.getDataPoints()) {
+      sanitized.add(sanitizeSummaryDataPoint(data));
+    }
+    return new SummarySnapshot(snapshot.getMetadata(), sanitized);
+  }
+
+  private SummarySnapshot.SummaryDataPointSnapshot sanitizeSummaryDataPoint(
+      SummarySnapshot.SummaryDataPointSnapshot data) {
+    SummarySnapshot.SummaryDataPointSnapshot.Builder builder =
+        SummarySnapshot.SummaryDataPointSnapshot.builder()
+            .quantiles(data.getQuantiles())
+            .sum(data.getSum())
+            .labels(data.getLabels())
+            .exemplars(sanitizeExemplars(data.getExemplars()));
+    if (data.hasCount()) {
+      builder.count(data.getCount());
+    }
+    if (data.hasCreatedTimestamp()) {
+      builder.createdTimestampMillis(data.getCreatedTimestampMillis());
+    }
+    if (data.hasScrapeTimestamp()) {
+      builder.scrapeTimestampMillis(data.getScrapeTimestampMillis());
+    }
+    return builder.build();
+  }
+
+  private Exemplars sanitizeExemplars(Exemplars exemplars) {
+    if (!openMetrics2Properties.getExemplarCompliance()) {
+      return exemplars;
+    }
+    List<Exemplar> sanitized = new ArrayList<>();
+    for (Exemplar exemplar : exemplars) {
+      if (exemplar.hasTimestamp()) {
+        sanitized.add(exemplar);
+      }
+    }
+    return sanitized.isEmpty() ? Exemplars.EMPTY : Exemplars.of(sanitized);
   }
 
   private void writeNameAndLabels(
