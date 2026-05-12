@@ -1,6 +1,6 @@
 [tools]
-"go:github.com/gohugoio/hugo" = "v0.161.0"
 "go:github.com/grafana/oats" = "0.6.1"
+hugo = "0.161.1"
 java = "temurin-25.0.3+9.0.LTS"
 node = "24.15.0"
 protoc = "34.1"
@@ -15,7 +15,7 @@ editorconfig-checker = "v3.6.1"
 "github:jonwiggins/xmloxide" = "v0.4.2"
 "github:koalaman/shellcheck" = "v0.11.0"
 lychee = "0.23.0"
-"npm:renovate" = "43.143.1"
+"npm:renovate" = "43.144.0"
 "pipx:codespell" = "2.4.2"
 ruff = "0.15.12"
 rumdl = "0.1.84"
@@ -63,8 +63,8 @@ run = "./mvnw install -DskipTests -Dcoverage.skip=true"
 
 [tasks."lint"]
 description = "Run all lints"
-raw_args = true
 depends = ["lint:bom"]
+raw_args = true
 run = "flint run"
 
 [tasks."lint:fix"]
@@ -99,11 +99,11 @@ run = ["hugo --gc --minify --baseURL ${BASE_URL}/", "echo 'ls ./public/api' && l
 
 [tasks."benchmark:quick"]
 description = "Run benchmarks with reduced iterations (quick smoke test, ~10 min)"
-run = "python3 ./.mise/tasks/update_benchmarks.py --jmh-args '-f 1 -wi 1 -i 3'"
+run = "python3 ./.mise/tasks/update_benchmarks.py --jmh-args '-f 1 -wi 1 -i 3 -prof gc'"
 
 [tasks."benchmark:ci"]
 description = "Run benchmarks with CI configuration (3 forks, 3 warmup, 5 measurement iterations (~60 min total)"
-run = "python3 ./.mise/tasks/update_benchmarks.py --jmh-args '-f 3 -wi 3 -i 5'"
+run = "python3 ./.mise/tasks/update_benchmarks.py --jmh-args '-f 3 -wi 3 -i 5 -prof gc'"
 
 [tasks."benchmark:ci-json"]
 description = "Run benchmarks with CI configuration and JSON output (for workflow/testing)"
@@ -111,7 +111,7 @@ run = """
 ./mvnw -pl benchmarks -am -DskipTests clean package
 JMH_ARGS="${JMH_ARGS:--f 3 -wi 3 -i 5}"
 echo "Running benchmarks with args: $JMH_ARGS"
-java -jar ./benchmarks/target/benchmarks.jar -rf json -rff benchmark-results.json $JMH_ARGS
+java -jar ./benchmarks/target/benchmarks.jar -rf json -rff benchmark-results.json $JMH_ARGS -prof gc
 """
 
 [tasks."benchmark:generate-summary"]
